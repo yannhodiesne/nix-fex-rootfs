@@ -1,0 +1,109 @@
+name: weekly
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - Containerfile
+      - build.sh
+      - .github/workflows/weekly.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            extra-platforms = x86_64-linux i686-linux
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build rootfs image
+        run: ./build.sh
+
+      - name: Compute release tag and hash
+        id: rel
+        run: |
+          echo "date=$(date -u +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
+          echo "hash=$(nix hash file --type sha256 --sri fex-rootfs.erofs)" >> "$GITHUB_OUTPUT"
+
+      - name: Write sha256 attestation
+        run: echo "${{ steps.rel.outputs.hash }}  fex-rootfs.erofs" > fex-rootfs.erofs.sha256
+
+      - name: Commit new flake.nix to main
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          sed -i \
+            -e "s|releases/download/[^\"]*/fex-rootfs.erofs|releases/download/${{ steps.rel.outputs.date }}/fex-rootfs.erofs|" \
+            -e "s|hash = \"sha256-[^\"]*\"|hash = \"${{ steps.rel.outputs.hash }}\"|" \
+            flake.nix
+          git add flake.nix
+          # same-day re-run: amend the previous release commit instead of stacking a new one
+          if git fetch origin "${{ steps.rel.outputs.date }}" 2>/dev/null; then
+            echo "tag ${{ steps.rel.outputs.date }} exists, reusing it"
+            git commit --amend --no-edit -m "release ${{ steps.rel.outputs.date }}: update flake.nix"
+            git push --force-with-lease origin main
+          else
+            git commit -m "release ${{ steps.rel.outputs.date }}: update flake.nix"
+            git push origin main
+            git tag "${{ steps.rel.outputs.date }}"
+            git push origin "${{ steps.rel.outputs.date }}"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish or override release for today
+        run: |
+          body=$(printf 'SHA-256 (SRI): `%s`\nPin: `inputs.nix-fex-rootfs.url = "github:yannhodiesne/nix-fex-rootfs/%s";`\n' \
+            "${{ steps.rel.outputs.hash }}" "${{ steps.rel.outputs.date }}")
+          if gh release view "${{ steps.rel.outputs.date }}" >/dev/null 2>&1; then
+            # same-day re-run: force-replace the tag and recreate the release assets
+            gh release delete "${{ steps.rel.outputs.date }}" --yes
+            git push origin --delete "${{ steps.rel.outputs.date }}" 2>/dev/null || true
+            git tag -f "${{ steps.rel.outputs.date }}"
+            git push -f origin "${{ steps.rel.outputs.date }}"
+            gh release create "${{ steps.rel.outputs.date }}" \
+              --title "FEX rootfs (Fedora 45) ${{ steps.rel.outputs.date }}" \
+              --notes "$body" \
+              fex-rootfs.erofs fex-rootfs.erofs.sha256
+          else
+            gh release create "${{ steps.rel.outputs.date }}" \
+              --title "FEX rootfs (Fedora 45) ${{ steps.rel.outputs.date }}" \
+              --notes "$body" \
+              fex-rootfs.erofs fex-rootfs.erofs.sha256
+          fi
+          gh release edit "${{ steps.rel.outputs.date }}" --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # delete releases older than 2 years
+      - name: Prune releases older than 2 years
+        run: |
+          cutoff=$(date -u -d '2 years ago' +%s)
+          gh release list --limit 1000 --json tagName,publishedAt,isPrerelease \
+            --jq '.[] | select(.isPrerelease | not) | select(.tagName != "latest")' \
+          | while read -r rel; do
+              tag=$(echo "$rel" | jq -r .tagName)
+              ts=$(date -u -d "$(echo "$rel" | jq -r .publishedAt)" +%s)
+              if [ "$ts" -lt "$cutoff" ]; then
+                echo "pruning $tag"
+                gh release delete "$tag" --yes || true
+                git push origin --delete "$tag" 2>/dev/null || true
+              fi
+            done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
