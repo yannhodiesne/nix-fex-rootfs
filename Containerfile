@@ -32,7 +32,7 @@ RUN dnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
 
 # resolv.conf and hosts must be baked in
 RUN printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' > /etc/resolv.conf.tmp \
- && mv -f /etc/resolv.conf.tmp /etc/resolv.conf \
+ && rm -f /etc/resolv.conf && mv /etc/resolv.conf.tmp /etc/resolv.conf \
  && printf '127.0.0.1 localhost\n::1 localhost\n' > /etc/hosts
 
 # guest Mesa provider manifest read by Steam's FEX compatibility tool
