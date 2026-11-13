@@ -17,7 +17,7 @@
         let
           image = pkgs.fetchurl {
             url = "https://github.com/yannhodiesne/nix-fex-rootfs/releases/download/2026.11.13/fex-rootfs.erofs";
-            hash = "sha256-yrre6DTdFGfibpW/okztIRBcWYjmAK3CeeTM8fX9EDA=";
+            hash = "sha256-u3SsdOU8wNmPgEA70l1xY+jciesgfIu2oY2Henzy5bU=";
           };
         in
         pkgs.runCommand "fex-rootfs-attested.erofs" { } ''
