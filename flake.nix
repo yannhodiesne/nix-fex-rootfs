@@ -1,5 +1,5 @@
 {
-  description = "Fedora 45 x86_64 rootfs for FEX-Emu, plus a NixOS module";
+  description = "Fedora 44 x86_64 rootfs for FEX-Emu, plus a NixOS module";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 

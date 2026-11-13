@@ -77,12 +77,12 @@ jobs:
             git tag -f "${{ steps.rel.outputs.date }}"
             git push -f origin "${{ steps.rel.outputs.date }}"
             gh release create "${{ steps.rel.outputs.date }}" \
-              --title "FEX rootfs (Fedora 45) ${{ steps.rel.outputs.date }}" \
+              --title "FEX rootfs (Fedora 44) ${{ steps.rel.outputs.date }}" \
               --notes "$body" \
               fex-rootfs.erofs fex-rootfs.erofs.sha256
           else
             gh release create "${{ steps.rel.outputs.date }}" \
-              --title "FEX rootfs (Fedora 45) ${{ steps.rel.outputs.date }}" \
+              --title "FEX rootfs (Fedora 44) ${{ steps.rel.outputs.date }}" \
               --notes "$body" \
               fex-rootfs.erofs fex-rootfs.erofs.sha256
           fi

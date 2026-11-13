@@ -1,6 +1,6 @@
 # nix-fex-rootfs
 
-x86_64 rootfs based on Fedora 45 and NixOS module for [FEX-Emu](https://fex-emu.com)
+x86_64 rootfs based on Fedora 44 and NixOS module for [FEX-Emu](https://fex-emu.com)
 
 ## Use from NixOS
 
