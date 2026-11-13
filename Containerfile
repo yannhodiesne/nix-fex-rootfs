@@ -1,5 +1,7 @@
 FROM --platform=linux/amd64 registry.fedoraproject.org/fedora:44
 
+RUN dnf upgrade -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && dnf clean all
+
 # package list mirrors upstream FEX-Emu/RootFS
 RUN dnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
       SDL3 flac-libs fuse-libs fuse3-libs glew-devel glibc harfbuzz ibus-libs libX11-xcb \
@@ -11,6 +13,7 @@ RUN dnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
       xcb-util xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-xrm xdg-desktop-portal \
       clinfo curl dbus dnf-utils gobject-introspection pciutils rsync sudo usbutils \
       util-linux-core vulkan-tools xdg-desktop-portal-gtk xterm xz zenity \
+      nss-util nss-softokn nss-softokn-freebl ca-certificates tzdata \
     && dnf clean all
 
 RUN dnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
@@ -24,7 +27,15 @@ RUN dnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
       protobuf-compiler.i686 python3.i686 sdl12-compat.i686 speex.i686 spirv-llvm-translator.i686 \
       systemd.i686 xcb-util-cursor.i686 xcb-util-image.i686 xcb-util-keysyms.i686 \
       xcb-util-xrm.i686 xcb-util.i686 xdg-desktop-portal.i686 \
+      nss-util.i686 nss-softokn.i686 nss-softokn-freebl.i686 ca-certificates tzdata \
     && dnf clean all
+
+# resolv.conf and hosts must be baked in
+RUN printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' > /etc/resolv.conf \
+ && printf '127.0.0.1 localhost\n::1 localhost\n' > /etc/hosts
+
+# guest Mesa provider manifest read by Steam's FEX compatibility tool
+COPY rootfs-overlay/graphics_provider.json /graphics_provider.json
 
 # generate ld cache
 RUN /usr/sbin/ldconfig
@@ -34,3 +45,6 @@ RUN dnf remove -y '*-debuginfo' '*-debugsource' 2>/dev/null || true; \
     find /usr/lib64 /usr/lib /usr/bin /usr/sbin -type f \( -name '*.so*' -o -perm -u+x \) -exec strip --strip-debug {} + 2>/dev/null || true; \
     rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/locale/*/LC_MESSAGES 2>/dev/null || true; \
     dnf clean all
+
+# strip setuid/setgid bits like upstream
+RUN find /usr/bin /usr/sbin /bin /sbin -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true

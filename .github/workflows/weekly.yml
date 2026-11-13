@@ -52,14 +52,13 @@ jobs:
             -e "s|hash = \"sha256-[^\"]*\"|hash = \"${{ steps.rel.outputs.hash }}\"|" \
             flake.nix
           git add flake.nix
-          # same-day re-run: amend the previous release commit instead of stacking a new one
-          if git fetch origin "${{ steps.rel.outputs.date }}" 2>/dev/null; then
-            echo "tag ${{ steps.rel.outputs.date }} exists, reusing it"
-            git commit --amend --no-edit -m "release ${{ steps.rel.outputs.date }}: update flake.nix"
-            git push --force-with-lease origin main
+          git commit -m "release ${{ steps.rel.outputs.date }}: update flake.nix"
+          git push origin main
+          if git ls-remote --exit-code origin "refs/tags/${{ steps.rel.outputs.date }}" >/dev/null 2>&1; then
+            echo "tag ${{ steps.rel.outputs.date }} exists, force-moving it"
+            git tag -f "${{ steps.rel.outputs.date }}"
+            git push -f origin "${{ steps.rel.outputs.date }}"
           else
-            git commit -m "release ${{ steps.rel.outputs.date }}: update flake.nix"
-            git push origin main
             git tag "${{ steps.rel.outputs.date }}"
             git push origin "${{ steps.rel.outputs.date }}"
           fi
