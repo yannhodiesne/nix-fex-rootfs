@@ -30,11 +30,6 @@ RUN dnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
       nss-util.i686 nss-softokn.i686 nss-softokn-freebl.i686 ca-certificates tzdata \
     && dnf clean all
 
-# resolv.conf and hosts must be baked in
-RUN printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' > /etc/resolv.conf.tmp \
- && rm -f /etc/resolv.conf && mv /etc/resolv.conf.tmp /etc/resolv.conf \
- && printf '127.0.0.1 localhost\n::1 localhost\n' > /etc/hosts
-
 # guest Mesa provider manifest read by Steam's FEX compatibility tool
 COPY rootfs-overlay/graphics_provider.json /graphics_provider.json
 
