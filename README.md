@@ -26,7 +26,7 @@ services.fex.enable = true;
 
 It then registers the FEX binfmt handlers, mounts the erofs read-only at `/run/fex/rootfs`, and sets `FEX_ROOTFS`.
 
-Available options: `services.fex.enable`, `services.fex.rootfsPath`, `services.fex.package`, `services.fex.image`.
+Available options: `services.fex.enable`, `services.fex.rootfsPath`, `services.fex.package`, `services.fex.image`, `services.fex.server.enable`.
 
 ## Release model
 

@@ -25,6 +25,13 @@ in
       default = self.packages.${pkgs.stdenv.hostPlatform.system}.fex-rootfs;
       description = "EROFS rootfs image to mount at services.fex.rootfsPath";
     };
+    server = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Run a per-user FEXServer as a systemd user service";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -68,5 +75,18 @@ in
     };
 
     environment.sessionVariables.FEX_ROOTFS = cfg.rootfsPath;
+
+    systemd.user.services.fex-server = lib.mkIf cfg.server.enable {
+      description = "FEX-Emu server";
+      serviceConfig = {
+        Type = "simple";
+        ExecStart = "${cfg.package}/bin/FEXServer --foreground --persistent";
+        Environment = [ "FEX_ROOTFS=${cfg.rootfsPath}" ];
+        Restart = "on-failure";
+        # the rootfs mount must be up before the server starts
+        requiresMountsFor = [ cfg.rootfsPath ];
+      };
+      wantedBy = [ "default.target" ];
+    };
   };
 }
