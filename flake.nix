@@ -1,7 +1,14 @@
 {
   description = "Fedora 44 x86_64 rootfs for FEX-Emu, plus a NixOS module";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    
+    flake-compat = {
+      url = "github:NixOS/flake-compat";
+      flake = false;
+    };
+  };
 
   outputs =
     { self, nixpkgs }:
@@ -47,5 +54,5 @@
         );
       
       nixosModules.fex = self.nixosModules.default;
-    };
+  };
 }
