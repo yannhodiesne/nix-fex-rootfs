@@ -36,11 +36,17 @@ COPY rootfs-overlay/graphics_provider.json /graphics_provider.json
 # generate ld cache
 RUN /usr/sbin/ldconfig
 
-# shrink the final image: no debuginfo, no docs
-RUN dnf remove -y '*-debuginfo' '*-debugsource' 2>/dev/null || true; \
+# shrink the final image
+RUN dnf remove -y '*-devel' '*-debuginfo' '*-debugsource' 2>/dev/null || true; \
     find /usr/lib64 /usr/lib /usr/bin /usr/sbin -type f \( -name '*.so*' -o -perm -u+x \) -exec strip --strip-debug {} + 2>/dev/null || true; \
-    rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/locale/*/LC_MESSAGES 2>/dev/null || true; \
+    rm -rf /usr/local /usr/share/doc/* /usr/share/man/* /usr/share/locale/*/LC_MESSAGES 2>/dev/null || true; \
     dnf clean all
 
-# strip setuid/setgid bits like upstream
-RUN find /usr/bin /usr/sbin /bin /sbin -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true
+# remove setuid/setgid binaries
+RUN find /bin/ /sbin/ /usr/bin/ /usr/sbin/ -type f -perm /4000 -delete 2>/dev/null || true; \
+    find /bin/ /sbin/ /usr/bin/ /usr/sbin/ -type f -perm /2000 -delete 2>/dev/null || true
+
+# normalize permissions
+RUN find / -xdev -type d -exec chmod 755 {} + 2>/dev/null || true; \
+    find / -xdev -type f -exec chmod +rw {} + 2>/dev/null || true; \
+    chmod 1777 /tmp

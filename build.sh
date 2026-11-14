@@ -3,18 +3,29 @@ set -eu
 
 cd "$(dirname "$0")"
 
+echo Building container
 docker build --platform linux/amd64 -t fex-rootfs-fedora:44 -f Containerfile .
-docker run --rm -v "$PWD":/out fex-rootfs-fedora:44 tar --sort=name --mtime='@0' -czf /out/rootfs.tar.gz -C / --exclude=./out --exclude=./proc --exclude=./sys --exclude=./dev .
 
+echo Archiving container content
+docker run --rm fex-rootfs-fedora:44 tar --sort=name --mtime='@0' -czf - -C / --exclude=./proc --exclude=./sys --exclude=./dev . > rootfs.tar.gz
+
+echo Extracting the archive
 mkdir ./tmp
 tar -xf rootfs.tar.gz -C "./tmp"
+rm -f rootfs.tar.gz
 
-printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' > ./tmp/etc/resolv.conf
-printf '127.0.0.1 localhost\n::1 localhost\n' > ./tmp/etc/hosts
+echo Removing hosts and resolv.conf
+rm -f ./tmp/etc/hosts ./tmp/etc/resolv.conf
 
-docker run --rm -v "./tmp":/rootfs -v "$PWD":/out --platform linux/amd64 registry.fedoraproject.org/fedora:44 \
+echo Bundling using erofs
+tar -cf - -C ./tmp . | docker run --rm -i --platform linux/amd64 registry.fedoraproject.org/fedora:44 \
   sh -c 'dnf install -y --setopt=tsflags=nodocs erofs-utils >/dev/null && \
-         SOURCE_DATE_EPOCH=0 mkfs.erofs --quiet -x-1 -zlz4hc,12 -T0 --all-time /out/fex-rootfs.erofs /rootfs && \
-         fsck.erofs /out/fex-rootfs.erofs'
+         mkdir /rootfs && tar -xf - -C /rootfs && \
+         SOURCE_DATE_EPOCH=0 mkfs.erofs --quiet -x-1 -zlz4hc,12 -T0 --all-time /tmp/fex-rootfs.erofs /rootfs && \
+         fsck.erofs /tmp/fex-rootfs.erofs && \
+         cat /tmp/fex-rootfs.erofs' > fex-rootfs.erofs
 
-echo "built: $PWD/fex-rootfs.erofs"
+echo Cleaning up
+rm -rf ./tmp
+
+echo "Built: $PWD/fex-rootfs.erofs"
