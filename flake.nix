@@ -11,7 +11,7 @@
   };
 
   outputs =
-    { self, nixpkgs }:
+    { self, nixpkgs, ... }:
     let
       systems = [
         "aarch64-linux"
