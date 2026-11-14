@@ -80,7 +80,7 @@ in
       description = "FEX-Emu server";
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${cfg.package}/bin/FEXServer --foreground --persistent";
+        ExecStart = "${cfg.package}/bin/FEXServer --foreground --persistent=0";
         Environment = [ "FEX_ROOTFS=${cfg.rootfsPath}" ];
         Restart = "on-failure";
         # the rootfs mount must be up before the server starts
