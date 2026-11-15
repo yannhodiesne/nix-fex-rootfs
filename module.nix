@@ -74,14 +74,32 @@ in
       ];
     };
 
-    environment.sessionVariables.FEX_ROOTFS = cfg.rootfsPath;
+    environment.sessionVariables = {
+      FEX_ROOTFS = cfg.rootfsPath;
+      # steam-arm64 compatibility
+      PRESSURE_VESSEL_FILESYSTEMS_RO = cfg.rootfsPath;
+      STEAM_COMPAT_GRAPHICS_PROVIDER = "${cfg.rootfsPath}/graphics_provider.json";
+    };
+
+    # steam-arm64 compatibility
+    systemd.tmpfiles.rules = [
+      "L+ /usr/bin/printenv - - - - ${pkgs.coreutils}/bin/printenv"
+      "L+ /usr/bin/env - - - - ${pkgs.coreutils}/bin/env"
+      "L+ /usr/bin/true - - - - ${pkgs.coreutils}/bin/true"
+      "L+ /bin/true - - - - ${pkgs.coreutils}/bin/true"
+    ];
 
     systemd.user.services.fex-server = lib.mkIf cfg.server.enable {
       description = "FEX-Emu server";
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${cfg.package}/bin/FEXServer --foreground --persistent=0";
-        Environment = [ "FEX_ROOTFS=${cfg.rootfsPath}" ];
+        # --persistent requires an explicit timeout argument on recent releases
+        ExecStart = "${cfg.package}/bin/FEXServer --foreground --persistent=2147483647";
+        Environment = [
+          "FEX_ROOTFS=${cfg.rootfsPath}"
+          # steam-arm64 compatibility
+          "FEX_SERVERSOCKETPATH=/run/user/%U/%U.FEXServer.Socket"
+        ];
         Restart = "on-failure";
         # the rootfs mount must be up before the server starts
         requiresMountsFor = [ cfg.rootfsPath ];
