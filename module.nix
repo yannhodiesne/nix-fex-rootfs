@@ -2,6 +2,18 @@
 { lib, pkgs, utils, config, self, ... }:
 let
   cfg = config.services.fex;
+
+  # Build FEX for a specific ARM arch when requested
+  fexPackage =
+    if cfg.tuneArch == null then
+      cfg.package
+    else
+      cfg.package.overrideAttrs (old: {
+        cmakeFlags = (old.cmakeFlags or [ ]) ++ [
+          (lib.cmakeFeature "TUNE_ARCH" cfg.tuneArch)
+          (lib.cmakeFeature "TUNE_CPU" "none")
+        ];
+      });
 in
 {
   options.services.fex = {
@@ -19,6 +31,14 @@ in
       type = lib.types.package;
       default = pkgs.fex;
       description = "FEX-Emu package providing the binfmt interpreter";
+    };
+    tuneArch = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "armv8.4-a";
+      description = ''
+        Build FEX host code for this ARM architecture (passed to CMake as -DTUNE_ARCH)
+      '';
     };
     image = lib.mkOption {
       type = lib.types.package;
@@ -44,13 +64,13 @@ in
 
     nixpkgs.config.allowUnsupportedSystem = true;
 
-    environment.systemPackages = [ cfg.package ];
+    environment.systemPackages = [ fexPackage ];
 
     boot.binfmt.registrations =
       lib.mapAttrs
         (_: magic: {
           inherit (magic) magicOrExtension mask;
-          interpreter = "${cfg.package}/bin/FEX";
+          interpreter = "${fexPackage}/bin/FEX";
           preserveArgvZero = true;
           openBinary = true;
           matchCredentials = true;
@@ -94,7 +114,7 @@ in
       serviceConfig = {
         Type = "simple";
         # --persistent requires an explicit timeout argument on recent releases
-        ExecStart = "${cfg.package}/bin/FEXServer --foreground --persistent=2147483647";
+        ExecStart = "${fexPackage}/bin/FEXServer --foreground --persistent=2147483647";
         Environment = [
           "FEX_ROOTFS=${cfg.rootfsPath}"
           # steam-arm64 compatibility

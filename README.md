@@ -38,7 +38,18 @@ services.fex.enable = true;
 
 It then registers the FEX binfmt handlers, mounts the EROFS image read-only at `/run/fex/rootfs`, and sets `FEX_ROOTFS`.
 
-Available options: `services.fex.enable`, `services.fex.rootfsPath`, `services.fex.package`, `services.fex.image`, `services.fex.server.enable`.
+Available options: `services.fex.enable`, `services.fex.rootfsPath`, `services.fex.package`, `services.fex.tuneArch`, `services.fex.image`, `services.fex.server.enable`.
+
+### Tuning FEX for your CPU
+
+The official install script picks a different FEX package per CPU (armv8.0/8.2/8.4) whereas nixpkgs ships a single generic build. Set `tuneArch` to compile FEX's host code for a specific ARM architecture, like the official packages do:
+
+```nix
+{
+  services.fex.enable = true;
+  services.fex.tuneArch = "armv8.4-a"; # Adapt to the target CPU
+}
+```
 
 ## Release model
 
