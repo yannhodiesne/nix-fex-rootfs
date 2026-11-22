@@ -14,8 +14,12 @@ mkdir ./tmp
 tar -xf rootfs.tar.gz -C "./tmp"
 rm -f rootfs.tar.gz
 
-echo Removing hosts and resolv.conf
-rm -f ./tmp/etc/hosts ./tmp/etc/resolv.conf
+echo Removing host-owned files
+for f in etc/hosts etc/resolv.conf etc/timezone etc/localtime etc/machine-id \
+         etc/passwd etc/passwd- etc/group etc/group- etc/shadow etc/shadow- \
+         etc/gshadow etc/gshadow- var/lib/dbus/machine-id; do
+  rm -f "./tmp/$f"
+done
 
 echo Bundling using erofs
 tar -cf - -C ./tmp . | docker run --rm -i --platform linux/amd64 registry.fedoraproject.org/fedora:44 \
