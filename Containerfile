@@ -33,6 +33,9 @@ RUN dnf install -y --setopt=install_weak_deps=0 --setopt=tsflags=nodocs \
 # guest Mesa provider manifest read by Steam's FEX compatibility tool
 COPY rootfs-overlay/graphics_provider.json /graphics_provider.json
 
+# Ensure Vulkan ICD are findable
+RUN mkdir -p /etc/vulkan/icd.d && cp /usr/share/vulkan/icd.d/*.json /etc/vulkan/icd.d/
+
 # generate ld cache
 RUN /usr/sbin/ldconfig
 
